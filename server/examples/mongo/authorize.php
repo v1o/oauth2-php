@@ -1,41 +1,50 @@
 <?php
 
 /**
- * @file
  * Sample authorize endpoint.
  *
  * Obviously not production-ready code, just simple and to the point.
- *
  * In reality, you'd probably use a nifty framework to handle most of the crud for you.
  */
 
-require "lib/MongoOAuth2.php";
+require __DIR__ . '/lib/OAuth2StorageMongo.php';
+include __DIR__ . '/config.php';
 
-$oauth = new MongoOAuth2();
+$oauth = new OAuth2(new OAuth2StorageMongo($config['db_connection_string'], $config['db_name']));
 
 if ($_POST) {
-  $oauth->finishClientAuthorization($_POST["accept"] == "Yep", $_POST);
+    $user_id = 42;
+
+    try {
+        $oauth->finishClientAuthorization($_POST["accept"] == 'Yep', $user_id, $_POST);
+    } catch (OAuth2RedirectException $oauthError) {
+        die('You must give the application access to continue');
+    }
 }
 
 try {
-  $auth_params = $oauth->getAuthorizeParams();
+    $auth_params = $oauth->getAuthorizeParams();
 } catch (OAuth2ServerException $oauthError) {
-  $oauthError->sendHttpResponse();
+    $oauthError->sendHttpResponse();
 }
 
 ?>
 <html>
-  <head>Authorize</head>
-  <body>
-    <form method="post" action="authorize.php">
-      <?php foreach ($auth_params as $k => $v) { ?>
-      <input type="hidden" name="<?php echo $k ?>" value="<?php echo $v ?>" />
-      <?php } ?>
-      Do you authorize the app to do its thing?
-      <p>
-        <input type="submit" name="accept" value="Yep" />
-        <input type="submit" name="accept" value="Nope" />
-      </p>
-    </form>
-  </body>
+    <head>
+        <h1>Authorize</h1>
+    </head>
+    <body>
+        <form method="post" action="authorize.php">
+            <? foreach ($auth_params as $k => $v) : ?>
+                <input type="hidden" name="<?= $k ?>" value="<?= $v ?>" />
+            <? endforeach ?>
+            <p>
+                Do you authorize the app to do its thing?
+            </p>
+            <p>
+                <input type="submit" name="accept" value="Yep" />
+                <input type="submit" name="accept" value="Nope" />
+            </p>
+        </form>
+    </body>
 </html>
